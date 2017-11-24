@@ -1,0 +1,78 @@
+R CODE FOR PERFORMING THE PERMUTATION SIGNIFICANCE TEST
+( Note: this is Procic's original code, published with the 2013 article.)
+
+library(ca)   #library ca has to be installed 
+library(plyr) #library plyr has to be installed
+Perm <- 1000  # Perm sets the number of permutations for the randomization test. The default is 1000 but it can be changed by the user.
+PERM <- c(1:Perm)     
+
+#Defining function for counting modes
+
+localMaxima <- function(x) {
+  # Use -Inf instead if x is numeric (non-integer)
+  y <- diff(c(-.Machine$integer.max, x)) > 0L
+  rle(y)$lengths
+  y <- cumsum(rle(y)$lengths)
+  y <- y[seq.int(1L, length(y), 2L)]
+  if (x[[1]] == x[[2]]) {
+    y <- y[-1]
+  }
+  y
+}
+
+
+
+#Reading data#
+
+# Select and Copy a complete data table (in the form of Tables 1-2 in the main text) from a spreadsheet
+
+data <- read.table("clipboard") #after copying the data from the spreadsheet, run this line 
+
+#Performing correspondence analysis (CA) on the data and calculating the number of modes for the CA solution
+
+M <- length(data[1,])
+a <- c(1:M)
+b <- c(1:M)
+data2 <- as.matrix(data)
+ord <- ca(data)$rowcoord[,1]
+data <- as.matrix(data)
+data1 <- cbind(ord, data)
+data1 <- as.data.frame(data1)
+G <- arrange(data1, desc(ord))
+matr <- G[,2:(M+1)]/(apply(G[,2:(M+1)],1, sum))
+
+
+for(j in 1:M) {
+
+a[j] <- length(localMaxima(matr[,j]))
+
+}
+
+sum(a) #gives the observed total of modes
+
+# Generating the distribution of total number of modes with randomized data
+
+for(i in 1:Perm) {
+for(j in 1:M) {
+data2[,j] <- sample(data[,j], replace = FALSE)}
+ord <- ca(data2[which(rowSums(data2)>0),])$rowcoord[,1]
+data2 <- as.matrix(data2)
+data3 <- cbind(ord, data2[which(rowSums(data2)>0),])
+data3 <- as.data.frame(data3)
+G <- arrange(data3, desc(ord))
+
+matr <- G[,2:(M+1)]/(apply(G[,2:(M+1)],1, sum))
+
+for(j in 1:M) {
+b[j] <- length(localMaxima(matr[,j]))}
+
+PERM[i] <- sum(b)}
+
+
+
+hist(PERM)         # Draws a histogram of randomized total number of modes       
+
+quantile(PERM, 0.05) # Gives the value of the 5th percentile of the randomized distribution of total number of modes
+
+
+
